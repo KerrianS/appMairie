@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'package:mairie_ipad/components/pdf_marker.dart';
+import 'package:mairie_ipad/components/pdf_annotations.dart';
 import 'package:mairie_ipad/view/project_task.dart';
 import 'package:mairie_ipad/components/header.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -171,7 +171,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PDFMarkerScreen(pdfFile: file),
+                          builder: (context) => AnnotationsPDF(pdfFile: file),
                         ),
                       );
                     }
