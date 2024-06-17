@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 
 enum AnnotationType {
-  Pen,
-  Text,
   Rectangle,
   Circle,
-  Highlight,
 }
 
 class ToolbarPDF extends StatefulWidget {
   final Function(AnnotationType)? onAnnotationSelected;
+  final VoidCallback? onSave;
 
   const ToolbarPDF({
     Key? key,
     this.onAnnotationSelected,
+    this.onSave,
   }) : super(key: key);
 
   @override
@@ -21,7 +20,7 @@ class ToolbarPDF extends StatefulWidget {
 }
 
 class _ToolbarPDFState extends State<ToolbarPDF> {
-  AnnotationType? _selectedType;
+  AnnotationType _selectedType = AnnotationType.Rectangle;
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +31,12 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildIconButton(AnnotationType.Pen, Icons.edit),
-          _buildIconButton(AnnotationType.Text, Icons.text_fields),
           _buildIconButton(AnnotationType.Rectangle, Icons.crop_square),
           _buildIconButton(AnnotationType.Circle, Icons.circle),
-          _buildIconButton(AnnotationType.Highlight, Icons.highlight),
+          IconButton(
+            onPressed: widget.onSave,
+            icon: Icon(Icons.save, color: Colors.white),
+          ),
         ],
       ),
     );
@@ -80,11 +80,11 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
 
   void _selectAnnotation(AnnotationType type) {
     setState(() {
-      _selectedType = _selectedType == type ? null : type;
+      _selectedType = type;
     });
 
-    if (widget.onAnnotationSelected != null && _selectedType != null) {
-      widget.onAnnotationSelected!(_selectedType!);
+    if (widget.onAnnotationSelected != null) {
+      widget.onAnnotationSelected!(type);
     }
   }
 }
