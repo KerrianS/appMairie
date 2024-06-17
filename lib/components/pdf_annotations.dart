@@ -52,6 +52,18 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
             onPressed: _saveAnnotations,
             icon: Icon(Icons.save),
           ),
+          IconButton(
+            onPressed: _zoomIn,
+            icon: Icon(Icons.zoom_in),
+          ),
+          IconButton(
+            onPressed: _zoomOut,
+            icon: Icon(Icons.zoom_out),
+          ),
+          IconButton(
+            onPressed: _clearAnnotations,
+            icon: Icon(Icons.delete),
+          ),
         ],
       ),
       body: Stack(
@@ -132,8 +144,7 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
                         _currentAnnotationType = type!;
                       });
                     },
-                    onSavePressed:
-                        _saveAnnotations, // Passer la fonction de sauvegarde
+                    onSavePressed: _saveAnnotations,
                   ),
                 ],
               ),
@@ -150,18 +161,9 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
         _endOffset != null &&
         _currentPage >= 0 &&
         _currentPage < _totalPages) {
-      final PdfPage page = _pdfDocument!.pages[_currentPage];
       final Rect rect = Rect.fromPoints(_startOffset!, _endOffset!);
-      final PdfRectangleAnnotation rectangleAnnotation = PdfRectangleAnnotation(
-        rect,
-        'Rectangle Annotation',
-        author: 'Syncfusion',
-        color: PdfColor(255, 0, 0),
-      );
-
-      page.annotations.add(rectangleAnnotation);
       _annotations.add(Annotation(rect, _currentAnnotationType));
-      _updateAnnotations();
+      _addAnnotationToPdf(rect);
     }
   }
 
@@ -171,34 +173,32 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
         _endOffset != null &&
         _currentPage >= 0 &&
         _currentPage < _totalPages) {
-      final PdfPage page = _pdfDocument!.pages[_currentPage];
       final Rect rect = Rect.fromPoints(_startOffset!, _endOffset!);
+      _annotations.add(Annotation(rect, _currentAnnotationType));
+      _addAnnotationToPdf(rect);
+    }
+  }
+
+  void _addAnnotationToPdf(Rect rect) {
+    final PdfPage page = _pdfDocument!.pages[_currentPage];
+    if (_currentAnnotationType == AnnotationType.Rectangle) {
+      final PdfRectangleAnnotation rectangleAnnotation = PdfRectangleAnnotation(
+        rect,
+        'Rectangle Annotation',
+        author: 'Syncfusion',
+        color: PdfColor(255, 0, 0),
+      );
+      page.annotations.add(rectangleAnnotation);
+    } else if (_currentAnnotationType == AnnotationType.Circle) {
       final PdfEllipseAnnotation circleAnnotation = PdfEllipseAnnotation(
         rect,
         'Circle Annotation',
         author: 'Syncfusion',
         color: PdfColor(0, 0, 255),
       );
-
       page.annotations.add(circleAnnotation);
-      _annotations.add(Annotation(rect, _currentAnnotationType));
-      _updateAnnotations();
     }
-  }
-
-  void _updateAnnotations() {
-    _refreshViewer();
-  }
-
-  void _refreshViewer() {
-    setState(() {
-      _isReady = false;
-    });
-    Future.delayed(Duration(milliseconds: 500), () {
-      setState(() {
-        _isReady = true;
-      });
-    });
+    _pdfViewerController.jumpToPage(_currentPage);
   }
 
   void _saveAnnotations() {
@@ -211,6 +211,28 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
     final List<int> bytes = await document.save();
     final file = File(widget.pdfFile.path);
     await file.writeAsBytes(bytes, flush: true);
+  }
+
+  void _zoomIn() {
+    _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel + 0.5;
+  }
+
+  void _zoomOut() {
+    _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel - 0.5;
+  }
+
+  void _clearAnnotations() {
+    _annotations.clear();
+    if (_pdfDocument != null) {
+      for (int i = 0; i < _pdfDocument!.pages.count; i++) {
+        final PdfPage page = _pdfDocument!.pages[i];
+        for (int j = 0; j < page.annotations.count; j++) {
+          final PdfAnnotation annotation = page.annotations[j];
+          page.annotations.remove(annotation);
+        }
+      }
+    }
+    setState(() {});
   }
 }
 
@@ -246,7 +268,6 @@ class AnnotationPainter extends CustomPainter {
       }
     }
 
-    // Dessiner en temps réel si en train de dessiner
     if (isDrawing) {
       final paint = Paint()
         ..color = currentAnnotationType == AnnotationType.Rectangle
@@ -275,12 +296,12 @@ class AnnotationPainter extends CustomPainter {
 
 class ToolbarPDF extends StatefulWidget {
   final Function(AnnotationType)? onAnnotationSelected;
-  final VoidCallback? onSavePressed; // Ajout de la fonction pour la sauvegarde
+  final VoidCallback? onSavePressed;
 
   const ToolbarPDF({
     Key? key,
     this.onAnnotationSelected,
-    this.onSavePressed, // Ajout de la fonction pour la sauvegarde
+    this.onSavePressed,
   }) : super(key: key);
 
   @override
@@ -301,7 +322,7 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
         children: [
           _buildIconButton(AnnotationType.Rectangle, Icons.crop_square),
           _buildIconButton(AnnotationType.Circle, Icons.circle),
-          _buildIconButtonForSave(), // Ajout de l'icône Save
+          _buildIconButtonForSave(),
         ],
       ),
     );
@@ -318,7 +339,7 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
         child: IconButton(
           onPressed: () {
             if (widget.onSavePressed != null) {
-              widget.onSavePressed!(); // Appel de la fonction de sauvegarde
+              widget.onSavePressed!();
             }
           },
           icon: Icon(
