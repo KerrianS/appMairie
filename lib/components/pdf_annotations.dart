@@ -15,10 +15,14 @@ class AnnotationsPDF extends StatefulWidget {
 
 class _AnnotationsPDFState extends State<AnnotationsPDF> {
   late PdfViewerController _pdfViewerController;
-  PdfDocument? _pdfDocument; // Use nullable PdfDocument
+  PdfDocument? _pdfDocument;
   int _totalPages = 0;
   int _currentPage = 0;
   bool _isReady = false;
+  AnnotationType? _currentAnnotationType;
+  Offset? _startOffset;
+  Offset? _endOffset;
+  bool _isDrawing = false;
 
   @override
   void initState() {
@@ -50,6 +54,51 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
               });
             },
           ),
+          if (_isReady)
+            GestureDetector(
+              onPanStart: (details) {
+                print("ON PAN START !");
+                if (_currentAnnotationType == AnnotationType.Rectangle ||
+                    _currentAnnotationType == AnnotationType.Circle) {
+                  setState(() {
+                    _isDrawing = true;
+                    _startOffset = details.localPosition;
+                  });
+                }
+              },
+              onPanUpdate: (details) {
+                if (_isDrawing) {
+                  setState(() {
+                    _endOffset = details.localPosition;
+                  });
+                }
+              },
+              onPanEnd: (details) {
+                print("ON PAN END !");
+                if (_isDrawing) {
+                  if (_currentAnnotationType == AnnotationType.Rectangle) {
+                    _addRectangleAnnotation();
+                  } else if (_currentAnnotationType == AnnotationType.Circle) {
+                    _addCircleAnnotation();
+                  }
+                  setState(() {
+                    _isDrawing = false;
+                    _startOffset = null;
+                    _endOffset = null;
+                  });
+                }
+              },
+              child: CustomPaint(
+                painter: AnnotationPainter(
+                  start: _startOffset,
+                  end: _endOffset,
+                  annotationType: _currentAnnotationType,
+                  currentPage: _currentPage,
+                  pdfDocument: _pdfDocument,
+                ),
+                child: SizedBox.expand(),
+              ),
+            ),
           Positioned(
             top: 0,
             right: 0,
@@ -63,27 +112,9 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
                 children: [
                   ToolbarPDF(
                     onAnnotationSelected: (type) {
-                      // Handle annotation selection here
-                      switch (type) {
-                        case AnnotationType.Pen:
-                          // Logic for pen annotation
-                          break;
-                        case AnnotationType.Text:
-                          // Logic for text annotation
-                          break;
-                        case AnnotationType.Rectangle:
-                          _addRectangleAnnotation();
-                          break;
-                        case AnnotationType.Circle:
-                          // Logic for circle annotation
-                          break;
-                        case AnnotationType.Highlight:
-                          // Logic for highlight annotation
-                          break;
-                        default:
-                          // Handle other types or throw an error
-                          throw ArgumentError('Unknown annotation type: $type');
-                      }
+                      setState(() {
+                        _currentAnnotationType = type;
+                      });
                     },
                   ),
                 ],
@@ -96,34 +127,99 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
   }
 
   void _addRectangleAnnotation() {
-    if (_pdfDocument != null && _pdfViewerController.pageNumber != null) {
-      final int pageNumber = _pdfViewerController.pageNumber!;
-      final int totalPages = _pdfDocument!.pages.count;
+    if (_pdfDocument != null &&
+        _startOffset != null &&
+        _endOffset != null &&
+        _currentPage >= 0 &&
+        _currentPage < _totalPages) {
+      final PdfPage page = _pdfDocument!.pages[_currentPage];
+      final Rect rect = Rect.fromPoints(_startOffset!, _endOffset!);
+      final PdfRectangleAnnotation rectangleAnnotation = PdfRectangleAnnotation(
+        rect,
+        'Rectangle Annotation',
+        author: 'Syncfusion',
+        color: PdfColor(255, 0, 0),
+      );
 
-      if (pageNumber >= 0 && pageNumber < totalPages) {
-        final PdfPage page = _pdfDocument!.pages[pageNumber];
-        final PdfRectangleAnnotation rectangleAnnotation =
-            PdfRectangleAnnotation(
-          Rect.fromLTWH(0, 30, 80, 80),
-          'Rectangle Annotation',
-          author: 'Syncfusion',
-          color: PdfColor(255, 0, 0),
-          setAppearance: true,
-          modifiedDate: DateTime.now(),
-        );
+      page.annotations.add(rectangleAnnotation);
+      _saveDocument(_pdfDocument!);
+      _refreshViewer();
+    }
+  }
 
-        // Add the annotation to the PDF page
-        page.annotations.add(rectangleAnnotation);
+  void _addCircleAnnotation() {
+    if (_pdfDocument != null &&
+        _startOffset != null &&
+        _endOffset != null &&
+        _currentPage >= 0 &&
+        _currentPage < _totalPages) {
+      final PdfPage page = _pdfDocument!.pages[_currentPage];
+      final Rect rect = Rect.fromPoints(_startOffset!, _endOffset!);
+      final PdfEllipseAnnotation circleAnnotation = PdfEllipseAnnotation(
+        rect,
+        'Circle Annotation',
+        author: 'Syncfusion',
+        color: PdfColor(0, 0, 255),
+      );
 
-        // Save the document with annotations
-        _saveDocument(_pdfDocument!);
-      }
+      page.annotations.add(circleAnnotation);
+      _saveDocument(_pdfDocument!);
+      _refreshViewer();
     }
   }
 
   Future<void> _saveDocument(PdfDocument document) async {
     final List<int> bytes = await document.save();
-    // Do something with the bytes, for example, save to a file
-    // File('output.pdf').writeAsBytes(bytes);
+    final file = File(widget.pdfFile.path);
+    await file.writeAsBytes(bytes, flush: true);
+  }
+
+  void _refreshViewer() {
+    setState(() {
+      _isReady = false;
+    });
+    Future.delayed(Duration(milliseconds: 500), () {
+      setState(() {
+        _isReady = true;
+      });
+    });
+  }
+}
+
+class AnnotationPainter extends CustomPainter {
+  final Offset? start;
+  final Offset? end;
+  final AnnotationType? annotationType;
+  final int currentPage;
+  final PdfDocument? pdfDocument;
+
+  AnnotationPainter({
+    required this.start,
+    required this.end,
+    required this.annotationType,
+    required this.currentPage,
+    required this.pdfDocument,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (start == null || end == null || annotationType == null) return;
+
+    final paint = Paint()
+      ..color =
+          annotationType == AnnotationType.Rectangle ? Colors.red : Colors.blue
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    if (annotationType == AnnotationType.Rectangle) {
+      canvas.drawRect(Rect.fromPoints(start!, end!), paint);
+    } else if (annotationType == AnnotationType.Circle) {
+      canvas.drawOval(Rect.fromPoints(start!, end!), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
   }
 }

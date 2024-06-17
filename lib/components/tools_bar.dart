@@ -67,10 +67,10 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
               onPressed: () {
                 _selectAnnotation(type);
               },
-              icon: Icon(iconData,
-                  color: isSelected
-                      ? Colors.yellow
-                      : Colors.white), // Jaune si sélectionné, sinon blanc
+              icon: Icon(
+                iconData,
+                color: isSelected ? Colors.yellow : Colors.white,
+              ),
             ),
           ),
         ],
@@ -79,21 +79,12 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
   }
 
   void _selectAnnotation(AnnotationType type) {
-    if (_selectedType == type) {
-      // Déselectionne si déjà sélectionné
-      setState(() {
-        _selectedType = null;
-      });
-    } else {
-      // Sélectionne sinon
-      setState(() {
-        _selectedType = type;
-      });
-    }
+    setState(() {
+      _selectedType = _selectedType == type ? null : type;
+    });
 
-    // Appelle la fonction de rappel avec le type sélectionné
-    if (widget.onAnnotationSelected != null) {
-      widget.onAnnotationSelected!(type);
+    if (widget.onAnnotationSelected != null && _selectedType != null) {
+      widget.onAnnotationSelected!(_selectedType!);
     }
   }
 }

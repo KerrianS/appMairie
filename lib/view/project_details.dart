@@ -32,7 +32,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
 
   @override
   void dispose() {
-    // Dispose the text controllers
     _projectNumberController.dispose();
     _projectNameController.dispose();
     _projectDescriptionController.dispose();
