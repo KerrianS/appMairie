@@ -6,13 +6,17 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 enum AnnotationType {
   Rectangle,
   Circle,
+  Text,
+  Eraser,
+  Selection,
 }
 
 class Annotation {
   final Rect rect;
   final AnnotationType type;
+  final String? text; // Ajout du texte
 
-  Annotation(this.rect, this.type);
+  Annotation(this.rect, this.type, {this.text});
 }
 
 class AnnotationsPDF extends StatefulWidget {
@@ -46,12 +50,8 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Visualisation du PDF'),
+        title: Text('PDF Viewer with Annotations'),
         actions: [
-          IconButton(
-            onPressed: _saveAnnotations,
-            icon: Icon(Icons.save),
-          ),
           IconButton(
             onPressed: _zoomIn,
             icon: Icon(Icons.zoom_in),
@@ -88,7 +88,8 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
             Listener(
               onPointerDown: (details) {
                 if (_currentAnnotationType == AnnotationType.Rectangle ||
-                    _currentAnnotationType == AnnotationType.Circle) {
+                    _currentAnnotationType == AnnotationType.Circle ||
+                    _currentAnnotationType == AnnotationType.Text) {
                   setState(() {
                     _isDrawing = true;
                     _startOffset = details.localPosition;
@@ -108,6 +109,8 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
                     _addRectangleAnnotation();
                   } else if (_currentAnnotationType == AnnotationType.Circle) {
                     _addCircleAnnotation();
+                  } else if (_currentAnnotationType == AnnotationType.Text) {
+                    _addTextAnnotation();
                   }
                   setState(() {
                     _isDrawing = false;
@@ -144,7 +147,6 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
                         _currentAnnotationType = type!;
                       });
                     },
-                    onSavePressed: _saveAnnotations,
                   ),
                 ],
               ),
@@ -179,7 +181,44 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
     }
   }
 
-  void _addAnnotationToPdf(Rect rect) {
+  void _addTextAnnotation() {
+    if (_pdfDocument != null &&
+        _startOffset != null &&
+        _endOffset != null &&
+        _currentPage >= 0 &&
+        _currentPage < _totalPages) {
+      final Rect rect = Rect.fromPoints(_startOffset!, _endOffset!);
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          String? text;
+          return AlertDialog(
+            title: Text('Add Text Annotation'),
+            content: TextField(
+              onChanged: (value) {
+                text = value;
+              },
+              decoration: InputDecoration(hintText: 'Enter your text'),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _annotations.add(
+                      Annotation(rect, _currentAnnotationType, text: text));
+                  _addAnnotationToPdf(rect, text);
+                  setState(() {});
+                },
+                child: Text('Add'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void _addAnnotationToPdf(Rect rect, [String? text]) {
     final PdfPage page = _pdfDocument!.pages[_currentPage];
     if (_currentAnnotationType == AnnotationType.Rectangle) {
       final PdfRectangleAnnotation rectangleAnnotation = PdfRectangleAnnotation(
@@ -257,7 +296,9 @@ class AnnotationPainter extends CustomPainter {
       final paint = Paint()
         ..color = annotation.type == AnnotationType.Rectangle
             ? Colors.red
-            : Colors.blue
+            : annotation.type == AnnotationType.Text
+                ? Colors.black
+                : Colors.blue
         ..strokeWidth = 2.0
         ..style = PaintingStyle.stroke;
 
@@ -265,6 +306,19 @@ class AnnotationPainter extends CustomPainter {
         canvas.drawRect(annotation.rect, paint);
       } else if (annotation.type == AnnotationType.Circle) {
         canvas.drawOval(annotation.rect, paint);
+      } else if (annotation.type == AnnotationType.Text) {
+        final textStyle = TextStyle(
+          // Ajout du style de texte pour l'annotation de texte
+          color: Colors.black,
+          fontSize: 14.0,
+        );
+        final textSpan = TextSpan(text: annotation.text, style: textStyle);
+        final textPainter = TextPainter(
+          text: textSpan,
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout(minWidth: 0, maxWidth: size.width);
+        textPainter.paint(canvas, annotation.rect.topLeft);
       }
     }
 
@@ -272,7 +326,9 @@ class AnnotationPainter extends CustomPainter {
       final paint = Paint()
         ..color = currentAnnotationType == AnnotationType.Rectangle
             ? Colors.red
-            : Colors.blue
+            : currentAnnotationType == AnnotationType.Text
+                ? Colors.black
+                : Colors.blue
         ..strokeWidth = 2.0
         ..style = PaintingStyle.stroke;
 
@@ -296,13 +352,8 @@ class AnnotationPainter extends CustomPainter {
 
 class ToolbarPDF extends StatefulWidget {
   final Function(AnnotationType)? onAnnotationSelected;
-  final VoidCallback? onSavePressed;
 
-  const ToolbarPDF({
-    Key? key,
-    this.onAnnotationSelected,
-    this.onSavePressed,
-  }) : super(key: key);
+  const ToolbarPDF({Key? key, this.onAnnotationSelected}) : super(key: key);
 
   @override
   _ToolbarPDFState createState() => _ToolbarPDFState();
@@ -320,33 +371,12 @@ class _ToolbarPDFState extends State<ToolbarPDF> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          _buildIconButton(AnnotationType.Selection, Icons.arrow_upward),
           _buildIconButton(AnnotationType.Rectangle, Icons.crop_square),
           _buildIconButton(AnnotationType.Circle, Icons.circle),
-          _buildIconButtonForSave(),
+          _buildIconButton(AnnotationType.Text, Icons.text_fields),
+          _buildIconButton(AnnotationType.Eraser, Icons.delete_outline),
         ],
-      ),
-    );
-  }
-
-  Widget _buildIconButtonForSave() {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: Ink(
-        decoration: ShapeDecoration(
-          shape: CircleBorder(),
-          color: Colors.transparent,
-        ),
-        child: IconButton(
-          onPressed: () {
-            if (widget.onSavePressed != null) {
-              widget.onSavePressed!();
-            }
-          },
-          icon: Icon(
-            Icons.save,
-            color: Colors.white,
-          ),
-        ),
       ),
     );
   }
