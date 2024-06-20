@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mairie_ipad/components/header.dart';
-import 'package:mairie_ipad/view/project_details.dart';
+import 'package:mairie_ipad/view/project/project_details.dart';
 import 'package:mairie_ipad/models/sous_projet.dart';
 import 'package:mairie_ipad/services/sousprojet_service.dart';
 

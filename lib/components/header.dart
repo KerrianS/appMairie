@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mairie_ipad/view/project_list.dart';
+import 'package:mairie_ipad/view/project/project_list.dart';
 
 class Header extends StatelessWidget implements PreferredSizeWidget {
   Header();

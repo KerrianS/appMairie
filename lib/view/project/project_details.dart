@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:mairie_ipad/models/projet.dart';
 import 'package:mairie_ipad/components/pdf_annotations.dart';
-import 'package:mairie_ipad/view/project_task.dart';
+import 'package:mairie_ipad/view/project/project_task.dart';
 import 'package:mairie_ipad/components/header.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
