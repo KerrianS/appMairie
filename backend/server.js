@@ -1,8 +1,13 @@
 const express = require('express');
 const mysql = require('mysql2');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 // Créer l'application Express
 const app = express();
+const uploadImages = multer({ dest: 'mairie/photos/' }); 
+const uploadPDFs = multer({ dest: 'mairie/pdf/' }); 
 const port = 3333;
 
 // Configurer la connexion à la base de données
@@ -62,7 +67,7 @@ app.get('/sous_projets', (req, res) => {
 });
 
 app.get('/sous_projet/:idProjet', (req, res) => {
-  const idProjet = req.params.idProjets;
+  const idProjet = req.params.idProjet;
   const sql = 'SELECT * FROM sous_projets WHERE numeroProjet = ?';
   connection.query(sql, [idProjet], (err, results) => {
     if (err) {
@@ -71,6 +76,38 @@ app.get('/sous_projet/:idProjet', (req, res) => {
       return;
     }
     res.json(results);
+  });
+});
+
+// Route pour recevoir une image
+app.post('/upload/image', uploadImages.single('file'), (req, res) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).send('Aucun fichier reçu');
+  }
+  const destPath = path.join(__dirname, 'mairie/photos', file.originalname);
+  fs.rename(file.path, destPath, (err) => {
+    if (err) {
+      console.error('Erreur lors du déplacement du fichier:', err.stack);
+      return res.status(500).send('Erreur lors du traitement du fichier');
+    }
+    res.status(200).send('Fichier reçu et déplacé avec succès');
+  });
+});
+
+// Route pour recevoir un fichier PDF
+app.post('/upload/pdf', uploadPDFs.single('file'), (req, res) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).send('Aucun fichier reçu');
+  }
+  const destPath = path.join(__dirname, 'mairie/pdf', file.originalname);
+  fs.rename(file.path, destPath, (err) => {
+    if (err) {
+      console.error('Erreur lors du déplacement du fichier:', err.stack);
+      return res.status(500).send('Erreur lors du traitement du fichier');
+    }
+    res.status(200).send('Fichier reçu et déplacé avec succès');
   });
 });
 

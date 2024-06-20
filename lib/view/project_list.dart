@@ -1,5 +1,3 @@
-// view/project_list_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mairie_ipad/components/header.dart';
@@ -15,11 +13,50 @@ class ProjectListScreen extends StatefulWidget {
 class _ProjectListScreenState extends State<ProjectListScreen> {
   late Future<List<Projet>> projets;
   final ProjetService projetService = ProjetService();
+  TextEditingController searchController = TextEditingController();
+  List<Projet> filteredProjets = [];
+  bool isSearching = false;
 
   @override
   void initState() {
     super.initState();
     projets = projetService.getAllProjects();
+    // Écouter les changements dans le champ de recherche
+    searchController.addListener(() {
+      filterProjects();
+    });
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  void filterProjects() {
+    String searchTerm = searchController.text.toLowerCase();
+    if (searchTerm.isEmpty) {
+      setState(() {
+        filteredProjets = [];
+        isSearching = false;
+      });
+      return;
+    }
+
+    List<Projet> filteredList = [];
+
+    projets.then((projetsList) {
+      filteredList = projetsList
+          .where((projet) =>
+              projet.numero.toString().toLowerCase().contains(searchTerm) ||
+              projet.nom.toLowerCase().contains(searchTerm))
+          .toList();
+
+      setState(() {
+        filteredProjets = filteredList;
+        isSearching = true;
+      });
+    });
   }
 
   @override
@@ -39,16 +76,20 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Container(
-                      height: 50,
-                      width: MediaQuery.of(context).size.width * 0.2,
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Rechercher...',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 10.0, horizontal: 15.0),
-                          prefixIcon: Icon(Icons.search),
+                    Expanded(
+                      child: Container(
+                        height: 50,
+                        child: TextField(
+                          controller: searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Rechercher...',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 10.0,
+                              horizontal: 15.0,
+                            ),
+                            prefixIcon: Icon(Icons.search),
+                          ),
                         ),
                       ),
                     ),
@@ -57,103 +98,90 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                 ),
               ),
               Expanded(
-                child: FutureBuilder<List<Projet>>(
-                  future: projets,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      List<Projet> projets = snapshot.data!;
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          showCheckboxColumn: false,
-                          headingRowHeight: 50,
-                          columnSpacing: 50,
-                          columns: [
-                            DataColumn(
-                              label: Text('N°',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                            DataColumn(
-                              label: Text('Nom du Projet',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                            DataColumn(
-                              label: Text('Description',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                            DataColumn(
-                              label: Text('Date Début',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                            DataColumn(
-                              label: Text('Date Fin',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                          rows: projets.map((projet) {
-                            final DateFormat formatter =
-                                DateFormat('DD/MM/YYYY');
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(projet.numero.toString())),
-                                DataCell(Text(projet.nom)),
-                                DataCell(Text(projet.description)),
-                                DataCell(
-                                    Text(formatter.format(projet.dateDebut))),
-                                DataCell(
-                                    Text(formatter.format(projet.dateFin))),
-                              ],
-                              onSelectChanged: (selected) {
-                                if (selected != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          FutureBuilder<Projet>(
-                                        future: projetService
-                                            .getProjectById(projet.numero),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState ==
-                                              ConnectionState.waiting) {
-                                            return Center(
-                                                child:
-                                                    CircularProgressIndicator());
-                                          } else if (snapshot.hasError) {
-                                            return Text(
-                                                'Erreur: ${snapshot.error}');
-                                          } else if (snapshot.hasData) {
-                                            return ProjectDetailsScreen(
-                                                projet: snapshot.data!);
-                                          } else {
-                                            return Text(
-                                                'Aucune donnée trouvée');
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          }).toList(),
-                        ),
-                      );
-                    } else if (snapshot.hasError) {
-                      return Text("${snapshot.error}");
-                    }
-                    return Center(child: CircularProgressIndicator());
-                  },
-                ),
+                child: isSearching ? buildSearchResults() : buildAllProjects(),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget buildSearchResults() {
+    return FutureBuilder<List<Projet>>(
+      future: projets,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return ListView.builder(
+            itemCount: filteredProjets.length,
+            itemBuilder: (context, index) {
+              final projet = filteredProjets[index];
+              return buildProjetItem(projet);
+            },
+          );
+        } else if (snapshot.hasError) {
+          return Center(child: Text("${snapshot.error}"));
+        }
+        return Center(child: CircularProgressIndicator());
+      },
+    );
+  }
+
+  Widget buildAllProjects() {
+    return FutureBuilder<List<Projet>>(
+      future: projets,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          List<Projet> projets = snapshot.data!;
+          return ListView.builder(
+            itemCount: projets.length,
+            itemBuilder: (context, index) {
+              final projet = projets[index];
+              return buildProjetItem(projet);
+            },
+          );
+        } else if (snapshot.hasError) {
+          return Center(child: Text("${snapshot.error}"));
+        }
+        return Center(child: CircularProgressIndicator());
+      },
+    );
+  }
+
+  Widget buildProjetItem(Projet projet) {
+    final DateFormat formatter = DateFormat('dd/MM/yyyy');
+    return ListTile(
+      title: Text(projet.nom),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("N°: ${projet.numero}"),
+          Text("Description: ${projet.description}"),
+          Text("Date Début: ${formatter.format(projet.dateDebut)}"),
+          Text("Date Fin: ${formatter.format(projet.dateFin)}"),
+        ],
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FutureBuilder<Projet>(
+              future: projetService.getProjectById(projet.numero),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Text('Erreur: ${snapshot.error}');
+                } else if (snapshot.hasData) {
+                  return ProjectDetailsScreen(projet: snapshot.data!);
+                } else {
+                  return Text('Aucune donnée trouvée');
+                }
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

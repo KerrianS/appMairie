@@ -11,6 +11,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:intl/intl.dart';
 
 class ProjectDetailsScreen extends StatefulWidget {
   final Projet projet;
@@ -41,6 +42,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
           SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -48,113 +50,103 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Projet N°:',
+                        'Projet N°: ${widget.projet.numero}',
                         style: TextStyle(
-                            fontSize: 18.0, fontWeight: FontWeight.bold),
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                      SizedBox(height: 8.0),
                       Text(
-                        widget.projet.numero.toString(),
+                        'Nom du projet: ${widget.projet.nom}',
                         style: TextStyle(fontSize: 16.0),
                       ),
-                      SizedBox(height: 16.0),
+                      SizedBox(height: 8.0),
                       Text(
-                        'Nom du projet:',
-                        style: TextStyle(
-                            fontSize: 18.0, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        widget.projet.nom,
-                        style: TextStyle(fontSize: 16.0),
-                      ),
-                      SizedBox(height: 16.0),
-                      Text(
-                        'Description:',
-                        style: TextStyle(
-                            fontSize: 18.0, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        widget.projet.description,
+                        'Description: ${widget.projet.description}',
                         style: TextStyle(fontSize: 16.0),
                       ),
                     ],
                   ),
                 ),
                 SizedBox(height: 20.0),
-                ElevatedButton(
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['pdf'],
-                    );
-
-                    if (result != null) {
-                      File file = File(result.files.single.path!);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AnnotationsPDF(pdfFile: file),
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Une erreur ou un problème observé ? Prend une photo et corrige le PDF',
+                        style: TextStyle(
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    }
-                  },
-                  child: Text(
-                    'Afficher le PDF',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(Colors.blue),
-                  ),
-                ),
-                SizedBox(height: 20.0),
-                ElevatedButton(
-                  onPressed: () async {
-                    await _requestPermissions();
-                    final ImagePicker _picker = ImagePicker();
-                    final XFile? image =
-                        await _picker.pickImage(source: ImageSource.camera);
+                      ),
+                      SizedBox(height: 12.0),
+                      ElevatedButton(
+                        onPressed: () async {
+                          FilePickerResult? result =
+                              await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['pdf'],
+                          );
 
-                    if (image != null) {
-                      setState(() {
-                        _imageFile = File(image.path);
-                      });
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Aucune image sélectionnée')),
-                      );
-                    }
-                  },
-                  child: Text(
-                    'Prendre une photo',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(Colors.blue),
-                  ),
-                ),
-                SizedBox(height: 100.0),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (_imageFile != null) {
-                      await _saveImage(_imageFile!);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProjectTaskScreen(),
+                          if (result != null) {
+                            File file = File(result.files.single.path!);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AnnotationsPDF(pdfFile: file),
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Afficher le PDF',
+                          style: TextStyle(color: Colors.white),
                         ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Aucune image à sauvegarder')),
-                      );
-                    }
-                  },
-                  child: Text(
-                    'Sauvegarder',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(Colors.blue),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.0,
+                            vertical: 12.0,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20.0),
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _requestPermissions();
+                          final ImagePicker _picker = ImagePicker();
+                          final XFile? image = await _picker.pickImage(
+                            source: ImageSource.camera,
+                          );
+
+                          if (image != null) {
+                            setState(() {
+                              _imageFile = File(image.path);
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Aucune image sélectionnée'),
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Prendre une photo',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.0,
+                            vertical: 12.0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -189,43 +181,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     if (!status.isGranted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Permission de stockage non accordée')),
-      );
-    }
-  }
-
-  Future<String> _getAppMairiePhotoPath() async {
-    final directory = await getDownloadsDirectory();
-    final downloadsPath = directory!.path;
-    return downloadsPath;
-  }
-
-  Future<void> _saveImage(File image) async {
-    try {
-      // Vérifier les permissions
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        await Permission.storage.request();
-        status = await Permission.storage.status;
-      }
-
-      if (status.isGranted) {
-        final photoPath = await _getAppMairiePhotoPath();
-        final fileName = path.basename(image.path);
-        final newImagePath = path.join(photoPath, fileName);
-        await image.copy(newImagePath);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image saved to $newImagePath')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Permission de stockage non accordée')),
-        );
-      }
-    } catch (e) {
-      // Afficher un message d'erreur en cas d'échec de la sauvegarde
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving image: $e')),
       );
     }
   }

@@ -5,7 +5,7 @@ import 'package:mairie_ipad/models/projet.dart';
 class ProjetService {
   Future<List<Projet>> getAllProjects() async {
     final response =
-        await http.get(Uri.parse('http://10.10.30.135:3000/projets'));
+        await http.get(Uri.parse('http://10.10.30.135:3333/projets'));
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
@@ -17,7 +17,7 @@ class ProjetService {
 
   Future<Projet> getProjectById(int projectId) async {
     final response =
-        await http.get(Uri.parse('http://10.10.30.135:3000/projet/$projectId'));
+        await http.get(Uri.parse('http://10.10.30.135:3333/projet/$projectId'));
 
     if (response.statusCode == 200) {
       List<dynamic> jsonResponse = json.decode(response.body);
