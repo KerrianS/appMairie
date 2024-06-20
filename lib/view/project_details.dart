@@ -1,92 +1,28 @@
-import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:mairie_ipad/models/projet.dart';
 import 'package:mairie_ipad/components/pdf_annotations.dart';
 import 'package:mairie_ipad/view/project_task.dart';
 import 'package:mairie_ipad/components/header.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class ProjectDetailsScreen extends StatefulWidget {
+  final Projet projet;
+
+  ProjectDetailsScreen({required this.projet});
+
   @override
   _ProjectDetailsScreenState createState() => _ProjectDetailsScreenState();
 }
 
 class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
   File? _imageFile;
-  final TextEditingController _projectNumberController =
-      TextEditingController();
-  final TextEditingController _projectNameController = TextEditingController();
-  final TextEditingController _projectDescriptionController =
-      TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _projectNumberController.text = '1';
-    _projectNameController.text = 'Projet 1';
-    _projectDescriptionController.text = 'Description du projet';
-  }
-
-  @override
-  void dispose() {
-    _projectNumberController.dispose();
-    _projectNameController.dispose();
-    _projectDescriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<String> _getAppMairiePhotoPath() async {
-    final directory = await getDownloadsDirectory();
-    final downloadsPath = directory!.path;
-    return downloadsPath;
-  }
-
-  Future<void> _saveImage(File image) async {
-    try {
-      // Vérifier les permissions
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        await Permission.storage.request();
-        status = await Permission.storage.status;
-      }
-
-      if (status.isGranted) {
-        final photoPath = await _getAppMairiePhotoPath();
-        final fileName = path.basename(image.path);
-        final newImagePath = path.join(photoPath, fileName);
-        await image.copy(newImagePath);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image saved to $newImagePath')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Permission de stockage non accordée')),
-        );
-      }
-    } catch (e) {
-      // Afficher un message d'erreur en cas d'échec de la sauvegarde
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving image: $e')),
-      );
-    }
-  }
-
-  Future<void> _requestPermissions() async {
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      // Demander la permission de stockage
-      status = await Permission.storage.request();
-    }
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Permission de stockage non accordée')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,14 +52,9 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                         style: TextStyle(
                             fontSize: 18.0, fontWeight: FontWeight.bold),
                       ),
-                      TextField(
-                        controller: _projectNumberController,
-                        keyboardType: TextInputType.number,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: 'Numéro du projet',
-                          contentPadding: EdgeInsets.symmetric(vertical: 10.0),
-                        ),
+                      Text(
+                        widget.projet.numero.toString(),
+                        style: TextStyle(fontSize: 16.0),
                       ),
                       SizedBox(height: 16.0),
                       Text(
@@ -131,13 +62,9 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                         style: TextStyle(
                             fontSize: 18.0, fontWeight: FontWeight.bold),
                       ),
-                      TextField(
-                        controller: _projectNameController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: 'Nom du projet',
-                          contentPadding: EdgeInsets.symmetric(vertical: 10.0),
-                        ),
+                      Text(
+                        widget.projet.nom,
+                        style: TextStyle(fontSize: 16.0),
                       ),
                       SizedBox(height: 16.0),
                       Text(
@@ -145,13 +72,9 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                         style: TextStyle(
                             fontSize: 18.0, fontWeight: FontWeight.bold),
                       ),
-                      TextField(
-                        controller: _projectDescriptionController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: 'Description du projet',
-                          contentPadding: EdgeInsets.symmetric(vertical: 10.0),
-                        ),
+                      Text(
+                        widget.projet.description,
+                        style: TextStyle(fontSize: 16.0),
                       ),
                     ],
                   ),
@@ -255,5 +178,55 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _requestPermissions() async {
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      // Demander la permission de stockage
+      status = await Permission.storage.request();
+    }
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Permission de stockage non accordée')),
+      );
+    }
+  }
+
+  Future<String> _getAppMairiePhotoPath() async {
+    final directory = await getDownloadsDirectory();
+    final downloadsPath = directory!.path;
+    return downloadsPath;
+  }
+
+  Future<void> _saveImage(File image) async {
+    try {
+      // Vérifier les permissions
+      var status = await Permission.storage.status;
+      if (!status.isGranted) {
+        await Permission.storage.request();
+        status = await Permission.storage.status;
+      }
+
+      if (status.isGranted) {
+        final photoPath = await _getAppMairiePhotoPath();
+        final fileName = path.basename(image.path);
+        final newImagePath = path.join(photoPath, fileName);
+        await image.copy(newImagePath);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image saved to $newImagePath')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Permission de stockage non accordée')),
+        );
+      }
+    } catch (e) {
+      // Afficher un message d'erreur en cas d'échec de la sauvegarde
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving image: $e')),
+      );
+    }
   }
 }

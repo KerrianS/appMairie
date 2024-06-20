@@ -24,14 +24,16 @@ class Header extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         _appBarAction('Projets', () {
-          // Vérifier si la route actuelle est déjà '/projects'
           if (ModalRoute.of(context)?.settings.name != '/projects') {
             Navigator.pushNamed(context, '/projects');
           }
         }, backgroundColor: Colors.orange, height: 35.0),
         _buildProjectsActiveButton(nombreProjetsActifs),
-        _appBarAction('Sous projets', () {},
-            backgroundColor: Colors.green, height: 35.0),
+        _appBarAction('Sous projets', () {
+          if (ModalRoute.of(context)?.settings.name != '/subprojects') {
+            Navigator.pushNamed(context, '/subprojects');
+          }
+        }, backgroundColor: Colors.green, height: 35.0),
       ],
     );
   }
