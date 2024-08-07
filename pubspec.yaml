@@ -69,6 +69,7 @@ dev_dependencies:
 flutter:
   assets:
     - lib/assets/ales.jpg
+    - lib/assets/images/tablet_rotation.jpg
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

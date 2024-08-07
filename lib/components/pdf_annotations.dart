@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:mairie_ipad/services/projet_service.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart'; // Ajouté
 import 'package:flutter/services.dart';
 
 enum AnnotationType {
@@ -46,45 +45,57 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
 
   Size? _pdfSize;
   Size? _widgetSize;
+  bool _showLandscapeWarning = false;
 
   @override
   void initState() {
     super.initState();
     _pdfViewerController = PdfViewerController();
-    // Force l'orientation en portrait
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
   void dispose() {
-    // Restaure les orientations par défaut à la fermeture du widget
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeRight,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.portraitDown
-    ]);
-    super.dispose();
+    // SystemChrome.setPreferredOrientations([
+    //   DeviceOrientation.portraitUp,
+    //   DeviceOrientation.landscapeRight,
+    //   DeviceOrientation.landscapeLeft,
+    //   DeviceOrientation.portraitDown
+    // ]);
+    // super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+
+    // Affiche un avertissement si l'orientation est en mode paysage
+    if (isLandscape && !_showLandscapeWarning) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLandscapeWarningDialog();
+      });
+      setState(() {
+        _showLandscapeWarning = true;
+      });
+    } else if (!isLandscape) {
+      setState(() {
+        _showLandscapeWarning = false;
+      });
+    }
+
+    final pdfWidth =
+        isLandscape ? mediaQuery.size.height : mediaQuery.size.width;
+    final pdfHeight =
+        isLandscape ? mediaQuery.size.width : mediaQuery.size.height;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('PDF Viewer'),
         actions: [
-          IconButton(
-            onPressed: _zoomIn,
-            icon: Icon(Icons.zoom_in),
-          ),
-          IconButton(
-            onPressed: _zoomOut,
-            icon: Icon(Icons.zoom_out),
-          ),
-          IconButton(
-            onPressed: _clearAnnotations,
-            icon: Icon(Icons.delete),
-          ),
+          IconButton(onPressed: _zoomIn, icon: Icon(Icons.zoom_in)),
+          IconButton(onPressed: _zoomOut, icon: Icon(Icons.zoom_out)),
+          IconButton(onPressed: _clearAnnotations, icon: Icon(Icons.delete)),
           _buildAnnotationIcon(
               AnnotationType.Rectangle, Icons.crop_square, Colors.red),
           _buildAnnotationIcon(
@@ -92,88 +103,146 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
           _buildAnnotationIcon(AnnotationType.Selection,
               Icons.arrow_outward_outlined, Colors.grey),
           IconButton(
-            icon: Icon(Icons.save, color: Colors.green),
-            onPressed: _saveAnnotations,
-          ),
+              icon: Icon(Icons.save, color: Colors.green),
+              onPressed: _saveAnnotations),
         ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           _widgetSize = constraints.biggest;
+
           return Stack(
             children: [
-              SfPdfViewer.file(
-                widget.pdfFile,
-                controller: _pdfViewerController,
-                onDocumentLoaded: (PdfDocumentLoadedDetails details) {
-                  setState(() {
-                    _pdfDocument = details.document;
-                    _totalPages = _pdfDocument!.pages.count;
-                    _isReady = true;
-                    _pdfSize = Size(
-                      details.document.pages[0].size.width,
-                      details.document.pages[0].size.height,
-                    );
-                  });
-                },
-                onPageChanged: (PdfPageChangedDetails details) {
-                  setState(() {
-                    _currentPage = details.newPageNumber;
-                  });
-                },
-              ),
-              if (_isReady && _widgetSize != null && _pdfSize != null)
-                Listener(
-                  onPointerDown: (details) {
-                    if (_currentAnnotationType == AnnotationType.Rectangle ||
-                        _currentAnnotationType == AnnotationType.Circle ||
-                        _currentAnnotationType == AnnotationType.Text) {
-                      setState(() {
-                        _isDrawing = true;
-                        _startOffset = details.localPosition;
-                      });
-                    }
-                  },
-                  onPointerMove: (details) {
-                    if (_isDrawing) {
-                      setState(() {
-                        _endOffset = details.localPosition;
-                      });
-                    }
-                  },
-                  onPointerUp: (details) {
-                    if (_isDrawing) {
-                      if (_currentAnnotationType == AnnotationType.Rectangle) {
-                        _addRectangleAnnotation();
-                      } else if (_currentAnnotationType ==
-                          AnnotationType.Circle) {
-                        _addCircleAnnotation();
-                      } else if (_currentAnnotationType ==
-                          AnnotationType.Text) {
-                        _addTextAnnotation();
-                      }
-                      setState(() {
-                        _isDrawing = false;
-                        _startOffset = null;
-                        _endOffset = null;
-                      });
-                    }
-                  },
-                  child: CustomPaint(
-                    painter: AnnotationPainter(
-                      annotations: _annotations,
-                      currentAnnotationType: _currentAnnotationType,
-                      startOffset: _startOffset,
-                      endOffset: _endOffset,
-                      isDrawing: _isDrawing,
+              Center(
+                child: Transform.rotate(
+                  angle: isLandscape ? -3.14159 / 2 : 0,
+                  child: Container(
+                    width: pdfWidth,
+                    height: pdfHeight,
+                    child: SfPdfViewer.file(
+                      widget.pdfFile,
+                      controller: _pdfViewerController,
+                      onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+                        setState(() {
+                          _pdfDocument = details.document;
+                          _totalPages = _pdfDocument!.pages.count;
+                          _isReady = true;
+                          _pdfSize = Size(
+                            details.document.pages[0].size.width,
+                            details.document.pages[0].size.height,
+                          );
+                        });
+                      },
+                      onPageChanged: (PdfPageChangedDetails details) {
+                        setState(() {
+                          _currentPage = details.newPageNumber;
+                        });
+                      },
                     ),
-                    child: SizedBox.expand(),
                   ),
                 ),
+              ),
+              if (_isReady && _widgetSize != null && _pdfSize != null)
+                if (!isLandscape)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onPanStart: (details) {
+                        if (_currentAnnotationType ==
+                                AnnotationType.Rectangle ||
+                            _currentAnnotationType == AnnotationType.Circle ||
+                            _currentAnnotationType == AnnotationType.Text) {
+                          setState(() {
+                            _isDrawing = true;
+                            _startOffset = details.localPosition;
+                          });
+                        }
+                      },
+                      onPanUpdate: (details) {
+                        if (_isDrawing) {
+                          setState(() {
+                            _endOffset = details.localPosition;
+                          });
+                        }
+                      },
+                      onPanEnd: (details) {
+                        if (_isDrawing) {
+                          if (_currentAnnotationType ==
+                              AnnotationType.Rectangle) {
+                            _addRectangleAnnotation();
+                          } else if (_currentAnnotationType ==
+                              AnnotationType.Circle) {
+                            _addCircleAnnotation();
+                          } else if (_currentAnnotationType ==
+                              AnnotationType.Text) {
+                            _addTextAnnotation();
+                          }
+                          setState(() {
+                            _isDrawing = false;
+                            _startOffset = null;
+                            _endOffset = null;
+                          });
+                        }
+                      },
+                      child: CustomPaint(
+                        painter: AnnotationPainter(
+                          annotations: _annotations,
+                          currentAnnotationType: _currentAnnotationType,
+                          startOffset: _startOffset,
+                          endOffset: _endOffset,
+                          isDrawing: _isDrawing,
+                        ),
+                        child: SizedBox.expand(),
+                      ),
+                    ),
+                  )
+                else
+                  Center(
+                    child: Container(
+                      color: Colors.black54,
+                      child: Center(
+                        child: Text(
+                          'Annotations sont désactivées en mode paysage',
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                  ),
             ],
           );
         },
       ),
+    );
+  }
+
+  void _showLandscapeWarningDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Tournez votre tablette svp'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Image.asset(
+                'lib/assets/images/tablet_rotation.jpg',
+                width: 100.0,
+                height: 100.0,
+              ),
+              SizedBox(height: 16.0),
+              Text(
+                  'Les annotations sont disponibles uniquement en mode portrait'),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -359,6 +428,7 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
       await tempFile.writeAsBytes(bytes, flush: true);
 
       try {
+        // Assuming you have a method uploadPdf in your ProjetService
         await _projetService.uploadPdf(tempFile);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Document sauvegardé avec succès!')),
