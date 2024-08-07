@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-
-enum AnnotationType {
-  Rectangle,
-  Circle,
-}
+import 'package:mairie_ipad/components/dessin.dart'; // Importer AnnotationType ici
 
 class ToolbarPDF extends StatefulWidget {
   final Function(AnnotationType)? onAnnotationSelected;

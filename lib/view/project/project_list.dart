@@ -21,7 +21,6 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
   void initState() {
     super.initState();
     projets = projetService.getAllProjects();
-    // Écouter les changements dans le champ de recherche
     searchController.addListener(() {
       filterProjects();
     });

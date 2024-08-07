@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mairie_ipad/view/home.dart';
 
 import 'package:mairie_ipad/view/project/project_list.dart';
-import 'package:mairie_ipad/view/project/project_photo.dart';
 import 'package:mairie_ipad/view/project/project_task.dart';
-
 import 'package:mairie_ipad/view/subproject/subproject_list.dart';
 
 void main() {
@@ -22,7 +20,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => HomeScreen(),
         '/projects': (context) => ProjectListScreen(),
-        '/projectPhoto': (context) => ProjectListScreen(),
         '/projectTask': (context) => ProjectTaskScreen(),
         '/subprojects': (context) => SubProjectListScreen(),
       },
