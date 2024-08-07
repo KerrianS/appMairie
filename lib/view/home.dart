@@ -11,7 +11,8 @@ class HomeScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets
                 .only(), // Ajoute un padding pour décaler l'image
-            child: Image.asset('lib/assets/ales.jpg', width: 250, height: 250),
+            child: Image.asset('lib/assets/images/ales.jpg',
+                width: 250, height: 250),
           ),
           SizedBox(height: 10),
           Center(

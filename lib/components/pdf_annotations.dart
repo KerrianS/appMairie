@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:mairie_ipad/view/project/project_task.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:mairie_ipad/services/projet_service.dart';
@@ -36,7 +37,7 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
   int _totalPages = 0;
   int _currentPage = 0;
   bool _isReady = false;
-  AnnotationType _currentAnnotationType = AnnotationType.Rectangle;
+  AnnotationType _currentAnnotationType = AnnotationType.Selection;
   List<Annotation> _annotations = [];
   Offset? _startOffset;
   Offset? _endOffset;
@@ -93,8 +94,6 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
       appBar: AppBar(
         title: Text('PDF Viewer'),
         actions: [
-          IconButton(onPressed: _zoomIn, icon: Icon(Icons.zoom_in)),
-          IconButton(onPressed: _zoomOut, icon: Icon(Icons.zoom_out)),
           IconButton(onPressed: _clearAnnotations, icon: Icon(Icons.delete)),
           _buildAnnotationIcon(
               AnnotationType.Rectangle, Icons.crop_square, Colors.red),
@@ -372,15 +371,6 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
       bottom = rect.bottom * scaleY;
     }
 
-    // Débogage des coordonnées
-    print('Widget Size: $widgetSize');
-    print('PDF Size: $pdfSize');
-    print('Original Rect: $rect');
-    print(
-        'Scale X: ${isWidgetLandscape ? pdfHeight / widgetWidth : pdfWidth / widgetWidth}, Scale Y: ${isWidgetLandscape ? pdfWidth / widgetHeight : pdfHeight / widgetHeight}');
-    print('Converted Left: $left, Converted Top: $top');
-    print('Converted Right: $right, Converted Bottom: $bottom');
-
     return Rect.fromLTRB(left, top, right, bottom);
   }
 
@@ -395,52 +385,76 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
     );
 
     if (_currentAnnotationType == AnnotationType.Rectangle) {
-      final rectangleAnnotation = PdfRectangleAnnotation(
-        pdfRect,
-        'Erreur à corriger !',
-        author: 'KerrianBoy',
-        color: PdfColor(255, 0, 0),
-      );
+      final rectangleAnnotation =
+          PdfRectangleAnnotation(pdfRect, 'Erreur à corriger !',
+              author: 'Mairie Alès',
+              color: PdfColor(255, 0, 0), // couleur de l'annotation
+              modifiedDate: DateTime.now());
       page.annotations.add(rectangleAnnotation);
     } else if (_currentAnnotationType == AnnotationType.Circle) {
-      final circleAnnotation = PdfEllipseAnnotation(
-        pdfRect,
-        'Erreur à corriger !',
-        author: 'KerrianBoy',
-        color: PdfColor(0, 0, 255),
-      );
+      final circleAnnotation =
+          PdfEllipseAnnotation(pdfRect, 'Erreur à corriger !',
+              author: 'Mairie Alès',
+              color: PdfColor(0, 0, 255), // couleur de l'annotation
+              modifiedDate: DateTime.now());
       page.annotations.add(circleAnnotation);
-    } else if (_currentAnnotationType == AnnotationType.Text && text != null) {
-      // final textAnnotation = PdfTextAnnotation(
-      //   pdfRect,
-      //   text,
-      //   author: 'Syncfusion',
-      //   color: PdfColor(0, 0, 0),
-      // );
-      // page.annotations.add(textAnnotation);
     }
   }
 
-  Future<void> _saveAnnotations() async {
-    if (_pdfDocument != null) {
-      final List<int> bytes = await _pdfDocument!.save();
-      final tempFile = File('${widget.pdfFile.path}_temp.pdf');
-      await tempFile.writeAsBytes(bytes, flush: true);
+  void _saveAnnotations() async {
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmation d\'envoie du PDF'),
+          content:
+              Text('Êtes-vous sûr de vouloir enregistrer et envoyer le PDF ?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text('Sauvegarder'),
+            ),
+          ],
+        );
+      },
+    );
 
-      try {
-        // Assuming you have a method uploadPdf in your ProjetService
-        await _projetService.uploadPdf(tempFile);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Document sauvegardé avec succès!')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la sauvegarde du document.')),
-        );
+    // Procéder à la sauvegarde si l'utilisateur a confirmé
+    if (shouldSave ?? false) {
+      if (_pdfDocument != null) {
+        final List<int> bytes = await _pdfDocument!.save();
+        final tempFile = File('${widget.pdfFile.path}_temp.pdf');
+        await tempFile.writeAsBytes(bytes, flush: true);
+
+        try {
+          // Supposons que vous avez une méthode uploadPdf dans votre ProjetService
+          await _projetService.uploadPdf(tempFile);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Document sauvegardé avec succès!')),
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ProjectTaskScreen()),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Erreur lors de la sauvegarde du document.')),
+          );
+        }
+
+        // Optionnel : Supprimez le fichier temporaire si ce n'est pas nécessaire.
+        await tempFile.delete();
       }
-
-      // Optionnel : Supprimez le fichier temporaire si ce n'est pas nécessaire.
-      await tempFile.delete();
     }
   }
 
