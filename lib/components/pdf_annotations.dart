@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:mairie_ipad/services/projet_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // Ajouté
+import 'package:flutter/services.dart';
 
 enum AnnotationType {
   Rectangle,
@@ -49,6 +51,20 @@ class _AnnotationsPDFState extends State<AnnotationsPDF> {
   void initState() {
     super.initState();
     _pdfViewerController = PdfViewerController();
+    // Force l'orientation en portrait
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  }
+
+  @override
+  void dispose() {
+    // Restaure les orientations par défaut à la fermeture du widget
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.portraitDown
+    ]);
+    super.dispose();
   }
 
   @override
